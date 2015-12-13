@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Monitoring realtime data</title>
+    <style>
+      #chart {
+        min-height: 300px;
+      }
+
+      #map {
+        min-height: 300px;
+      }
+    </style>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+    <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+            <h1>Monitoring realtime data</h1>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6"><!-- chart -->
+          <div id="chart"></div>
+        </div>
+        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6"><!-- map -->
+          <div id="map"></div>
+        </div>
+      </div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/flot/0.8.2/jquery.flot.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/flot/0.8.2/jquery.flot.time.min.js"></script>
+
+  <script>
+  /* *** Leaflet *** */
+  var map = L.map('map').setView([0, 0], 14);
+
+  L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri'
+  }).addTo(map);
+
+  var marker = L.marker([0, 0]).addTo(map);
+  var track = L.polyline([]).addTo(map);
+
+  /* *** Chart *** */
+  var chart;
+
+  function get_data() {
+    $.ajax({
+        url: '/data',
+        type: 'GET',
+        dataType: 'json',
+        success: on_data
+    });
+  }
+
+  function on_data(data) {
+    // function when data is received
+    //console.log(data);
+
+    // update chart
+    chart.setData([{data: data.values}]);
+    chart.setupGrid();
+    chart.draw();
+
+    // update map
+    dt = data.last[0];
+    val = Math.round(data.last[1] * 10) / 10;
+    lon = data.last[2]
+    lat = data.last[3];
+    map.panTo([lat, lon]);
+    marker.setLatLng([lat, lon]);
+    marker.bindPopup("<b>" + dt + "</b><br />data = " + val);
+    marker.openPopup();
+    track.setLatLngs(data.coords);
+
+    // wait and read data again
+    setTimeout(get_data, {{ sleepms }});
+  }
+
+  $(function() {
+    // Chart configuration
+    chartopts = {
+      series: {
+        label: 'data',
+        color: '#ff336e'
+      },
+      xaxis: {
+        mode: 'time',
+        timezone: 'browser'
+      },
+      legend: {
+        position: 'nw',
+        labelFormatter: function(label, series) {
+          return "&nbsp;&nbsp;" + label;
+        }
+      }
+    }
+    chart = $.plot("#chart", [ ], chartopts);
+    get_data();
+  });
+
+    </script>
+  </body>
+</html>
