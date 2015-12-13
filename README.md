@@ -1,7 +1,7 @@
 # Realtime data plot with map
 Small web interface to show realtime data with a map.
 
-<video src="./screencast/screencast.mp4" width="320" height="200" controls preload></video>
+![screencast](screencast/screencast.gif)
 
 It use the Python microframework [Flask] with :
  * [Bootstrap] for the two-column design,
