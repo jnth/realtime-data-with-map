@@ -8,9 +8,14 @@ It use the Python microframework [Flask] with :
  * [Leaflet] for the map,
  * [JQuery] and the [flot] plugin for the chart.
 
-This example is based from a [PythonWise] blog.
+This example is made from an idea of [PythonWise] blog.  
 
-It work with Python 3.5 on Ubuntu.
+For example, it can be use to follow a moving [Raspberry Pi] with a sensor data and a GPS. This Raspberry Pi must send data into a distant database.
+
+I made `fake_data.py` to simulate a moving Raspberry Pi. `monitor.py` is a [Flask] application to show data on chart and map.
+
+It works with Python 3.5.
+
 
 ## How to use it ?
 
@@ -35,7 +40,7 @@ Do not close the terminal and in an other terminal :
 
     python3.5 monitor.py /tmp/data.db
 
-See the realtime data and map at http://localhost:5000
+See the realtime data and map at [http://localhost:5000](http://localhost:5000).
 
 
 
@@ -46,3 +51,4 @@ See the realtime data and map at http://localhost:5000
 [JQuery]: https://jquery.com/
 [flot]: http://www.flotcharts.org/
 [PythonWise]: http://pythonwise.blogspot.fr/2014/11/a-streaming-chart-using-flask-and-flot.html
+[Raspberry Pi]: https://www.raspberrypi.org
