@@ -4,18 +4,18 @@
 """ Create SQLite3 database and add fake data (value, lon, lat). """
 
 
-# Configuration
-initvalue, initlon, initlat = 0, 5., 45.
-dvalue, dlon, dlat = (-20, 20), (-.001, .001), (0., .001)
-sleep = 2
-
-
 import os
 import sys
 import sqlite3
 import datetime
 import time
 import random
+
+
+# Configuration
+initvalue, initlon, initlat = 0, 5., 45.
+dvalue, dlon, dlat = (-20, 20), (-.001, .001), (0., .001)
+sleep = 2
 
 
 def rand(init, mn, mx):

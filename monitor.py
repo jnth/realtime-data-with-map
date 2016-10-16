@@ -3,7 +3,6 @@
 
 '''Show streaming graph of database.'''
 
-sleep = 2  # timestep for reading database
 
 import sys
 import datetime
@@ -12,6 +11,8 @@ from flask import Flask, jsonify, render_template
 from threading import Thread
 import time
 
+
+sleep = 2  # timestep for reading database
 
 app = Flask(__name__)
 values = [[], [], []]  # data, last values (with coords), coords
