@@ -20,6 +20,7 @@
       <div class="row">
         <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
             <h1>Monitoring realtime data</h1>
+            <p>Last record: <span id='lastrecord'></span></p>
         </div>
       </div>
       <div class="row">
@@ -60,6 +61,13 @@
   function on_data(data) {
     // function when data is received
     //console.log(data);
+
+    // update last record value
+    dt = data.last[0];
+    val = Math.round(data.last[1] * 10) / 10;
+    lon = data.last[2]
+    lat = data.last[3];
+    $("#lastrecord")[0].innerHTML = dt + " @ (" + lon + ", " + lat + "), data = " + val;
 
     // update chart
     chart.setData([{data: data.values}]);
