@@ -13,8 +13,9 @@ import random
 
 
 # Configuration
-initvalue, initlon, initlat = 0, 5., 45.
+initvalue, initlon, initlat = 50, 5., 45.
 dvalue, dlon, dlat = (-20, 20), (-.001, .001), (0., .001)
+minvalue, maxvalue = 0, 200
 sleep = 2
 
 
@@ -25,7 +26,12 @@ def rand(init, mn, mx):
     :param mx: maximal limit for the random value to add (int or float).
     :return: initial value + random value (float).
     """
-    return init + random.uniform(mn, mx)
+    value = init + random.uniform(mn, mx)
+    if value > maxvalue:
+        value = maxvalue
+    if value < minvalue:
+        value = minvalue
+    return value
 
 
 def read_args():
