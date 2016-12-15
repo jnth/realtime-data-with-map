@@ -11,9 +11,14 @@
         min-height: 300px;
       }
     </style>
+
+    <!-- Bootstrap -->
     <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+
+    <!-- Leaflet -->
     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
     <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+
   </head>
   <body>
     <div class="container">
@@ -31,6 +36,8 @@
           <div id="map"></div>
         </div>
       </div>
+
+  <!-- JQuery -->
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/flot/0.8.2/jquery.flot.min.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/flot/0.8.2/jquery.flot.time.min.js"></script>
@@ -43,8 +50,10 @@
     attribution: 'Tiles &copy; Esri'
   }).addTo(map);
 
-  var marker = L.marker([0, 0]).addTo(map);
-  var track = L.polyline([]).addTo(map);
+  markeroptions = {stroke: false, fillOpacity: 0.5, radius: 5};
+
+  // var marker = L.marker([0, 0]).addTo(map);
+  // var track = L.polyline([]).addTo(map);
 
   /* *** Chart *** */
   var chart;
@@ -80,10 +89,20 @@
     lon = data.last[2]
     lat = data.last[3];
     map.panTo([lat, lon]);
-    marker.setLatLng([lat, lon]);
-    marker.bindPopup("<b>" + dt + "</b><br />data = " + val);
-    marker.openPopup();
-    track.setLatLngs(data.coords);
+    //marker.setLatLng([lat, lon]);
+    //marker.bindPopup("<b>" + dt + "</b><br />data = " + val);
+    //marker.openPopup();
+    // track.setLatLngs(data.coords);
+
+    // ... and add circle marker with colors
+    if (val < 40) {
+      markeroptions.fillColor = '#00ff00';
+    } else if (val > 80) {
+      markeroptions.fillColor = '#ff0000';
+    } else {
+      markeroptions.fillColor = '#ffff00';
+    }
+    L.circleMarker([lat, lon], markeroptions).addTo(map);
 
     // wait and read data again
     setTimeout(get_data, {{ sleepms }});
