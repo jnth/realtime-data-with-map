@@ -4,9 +4,11 @@
 '''Show streaming graph of database.'''
 
 
+import io
 import datetime
+import pandas
 import pymysql
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 from threading import Thread
 import time
 
@@ -43,7 +45,7 @@ def dt2jst(dt):
 
 def prettydt(dt):
     """ Convert datetime string.
-    :param dt: datetime string (%Y-%m-%d %H:%M:%S format).
+    :param dt: datetime stdring (%Y-%m-%d %H:%M:%S format).
     :return: datetime string (%d/%m/%Y %H:%M:%S format).
     """
     pydt = datetime.datetime.strptime(
@@ -127,6 +129,23 @@ def import_data():
     conn.commit()
 
     return jsonify(status='ok')
+
+
+@app.route('/export.csv')
+def export_data():
+    """ Export data. """
+    sql = "SELECT dt, value1, value2, value3, lon, lat FROM data ORDER BY dt"
+    df = pandas.read_sql(sql, conn)
+
+    f = io.BytesIO()
+    writer = pandas.ExcelWriter(f, engine='xlsxwriter')
+    df.to_excel(writer, sheet_name='data')
+    writer.close()
+
+    f.seek(0)
+
+    return send_file(f, attachment_filename="data.xlsx",
+                     as_attachment=True)
 
 
 def main():
