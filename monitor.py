@@ -4,12 +4,19 @@
 '''Show streaming graph of database.'''
 
 
-import sys
 import datetime
-import sqlite3
-from flask import Flask, jsonify, render_template
+import pymysql
+from flask import Flask, jsonify, render_template, request
 from threading import Thread
 import time
+
+
+mysqlinfo = {
+    'host': 'vmli-bdd',
+    'user': 'jv',
+    'passwd': 'jv',
+    'db': 'afficheurqa'
+}
 
 
 sleep = 2  # timestep for reading database
@@ -17,19 +24,9 @@ sleep = 2  # timestep for reading database
 app = Flask(__name__)
 values = [[], [], []]  # data, last values (with coords), coords
 
-
-def read_args():
-    """ Read arguments and return path of database.
-    :return: path of database (string).
-    """
-    def usage():
-        print("usage: python monitor.py path/of/database.db")
-
-    args = sys.argv[1:]
-    if '-h' in args or '--help' in args or not args:
-        usage()
-        sys.exit()
-    return args[0]
+# Open database
+conn = pymysql.connect(**mysqlinfo)
+curs = conn.cursor()
 
 
 def dt2jst(dt):
@@ -38,7 +35,10 @@ def dt2jst(dt):
     :return dt: javascript time as int.
     """
     # with x 1000 to convert to javascript time
-    return int(time.mktime(time.strptime(dt, '%Y-%m-%d %H:%M:%S')))
+    return int(
+        time.mktime(
+            time.strptime(
+                dt.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')))
 
 
 def prettydt(dt):
@@ -46,33 +46,35 @@ def prettydt(dt):
     :param dt: datetime string (%Y-%m-%d %H:%M:%S format).
     :return: datetime string (%d/%m/%Y %H:%M:%S format).
     """
-    pydt = datetime.datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
+    pydt = datetime.datetime.strptime(
+        dt.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
     return pydt.strftime('%d/%m/%Y %H:%M:%S')
 
 
-def poll_data(fndb):
-    """ Read data from the database and save it.
-    :param fndb: path of SQLite database (string).
+def poll_data():
+    """ Read data from the database and save them into list.
     """
     while True:
-        # Open database and read the last 100 rows
-        conn = sqlite3.connect(fndb)
-        curs = conn.cursor()
+        # Read the last 100 rows
         try:
             curs.execute("""
-                SELECT dt, value, lon, lat
+                SELECT dt, value1, value2, value3, lon, lat
                 FROM data
-                LIMIT 100 OFFSET (SELECT count(*) FROM data) - 100
+                ORDER BY dt DESC LIMIT 100
             """)
-            db = curs.fetchall()
-        except sqlite3.OperationalError:
-            print("sqlite3 error: cannot read database !")
+            db = curs.fetchall()[::-1]
+        except pymysql.Error:
+            print("mysql error: cannot read database !")
             time.sleep(sleep)
             continue
 
         # list of (time, value) for the chart
-        data = [(dt2jst(dt) * 1000, value)
-                for dt, value, lon, lat in db]
+        data1 = [(dt2jst(dt) * 1000, value1)
+                 for dt, value1, value2, value3, lon, lat in db]
+        data2 = [(dt2jst(dt) * 1000, value2)
+                 for dt, value1, value2, value3, lon, lat in db]
+        data3 = [(dt2jst(dt) * 1000, value3)
+                 for dt, value1, value2, value3, lon, lat in db]
 
         # last record (and convert datetime in a pretty format)
         # it will be use to add a marker inside map and show last value in a
@@ -81,14 +83,12 @@ def poll_data(fndb):
         last[0] = prettydt(last[0])
 
         # list of coords (lat, lon) for polyline
-        coords = [(lat, lon) for dt, value, lon, lat in db]
+        coords = [(lat, lon) for dt, value1, value2, value3, lon, lat in db]
 
         # save data
-        values[0], values[1], values[2] = data, last, coords
+        values[0], values[1], values[2] = [data1, data2, data3], last, coords
 
-        # clone database connection
-        curs.close()
-        conn.close()
+        # wait
         time.sleep(sleep)
 
 
@@ -104,13 +104,35 @@ def data():
     return jsonify(values=values[0], last=values[1], coords=values[2])
 
 
+@app.route('/import')
+def import_data():
+    """ Import data into database. """
+    lon = request.args.get('lon')
+    lat = request.args.get('lat')
+    value1 = request.args.get('value1', 'NULL')
+    value2 = request.args.get('value2', 'NULL')
+    value3 = request.args.get('value3', 'NULL')
+    now = datetime.datetime.utcnow()
+
+    if lon is None:
+        return jsonify(status='error', message='pas de données lon'), 400
+
+    if lat is None:
+        return jsonify(status='error', message='pas de données lat'), 400
+
+    sql = ("INSERT INTO data (dt, value1, value2, value3, lon, lat) "
+           "VALUES ('{now:%Y-%m-%d %H:%M:%S}', {value1}, {value2}, {value3}, "
+           "{lon}, {lat})").format(**locals())
+    curs.execute(sql)
+    conn.commit()
+
+    return jsonify(status='ok')
+
+
 def main():
 
-    # Read path of database from arguments
-    fndb = read_args()
-
     # Run a thread to read data
-    thr = Thread(target=poll_data, args=(fndb, ))
+    thr = Thread(target=poll_data)
     thr.daemon = True
     thr.start()
 

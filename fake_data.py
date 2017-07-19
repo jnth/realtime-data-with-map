@@ -4,15 +4,14 @@
 """ Create SQLite3 database and add fake data (value, lon, lat). """
 
 
-import os
-import sys
-import sqlite3
+import requests
 import datetime
 import time
 import random
 
 
 # Configuration
+url = "http://0.0.0.0:5000"
 initvalue, initlon, initlat = 50, 5., 45.
 dvalue, dlon, dlat = (-20, 20), (-.001, .001), (0., .001)
 minvalue, maxvalue = 0, 200
@@ -34,66 +33,35 @@ def rand(init, mn, mx):
     return value
 
 
-def read_args():
-    """ Read arguments and return path of database.
-    :return: path of database (string).
-    """
-    def usage():
-        print("usage: python fake_data.py path/of/database.db")
-
-    args = sys.argv[1:]
-    if '-h' in args or '--help' in args or not args:
-        usage()
-        sys.exit()
-    return args[0]
-
-
 def main():
-    # Read arguments
-    fndb = read_args()
-
-    # Create table query if the file does not exits
-    createdb = not os.path.isfile(fndb)
-
-    # Database connection (sqlite3)
-    conn = sqlite3.connect(fndb)
-    curs = conn.cursor()
-
-    # Create table query
-    if createdb:
-        curs.execute(
-            "CREATE TABLE data (dt datetime, value real, lon real, lat real)")
-        conn.commit()
-        print("sqlite3: create table ok")
-
     # Infinite loop and add data into database
-    oldvalue, oldlon, oldlat = initvalue, initlon, initlat
+    oldvalue1, oldvalue2, oldvalue3, oldlon, oldlat = initvalue, initvalue, initvalue, initlon, initlat
     while True:
         try:
             # Date and time and generate random data
             dt = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            v = rand(oldvalue, *dvalue)
+            v1 = rand(oldvalue1, *dvalue)
+            v2 = rand(oldvalue2, *dvalue)
+            v3 = rand(oldvalue3, *dvalue)
             lon = rand(oldlon, *dlon)
             lat = rand(oldlat, *dlat)
 
             # Show data and insert into the database
-            print("{dt}  {v:8.3f}, {lon:10.6f}, {lat:10.6f}".format(
+            print("{dt}  {v1:8.3f}, {v2:8.3f}, {v3:8.3f}, {lon:10.6f}, {lat:10.6f}".format(
                 **locals()))
-            curs.execute("""
-                INSERT INTO data (dt, value, lon, lat)
-                VALUES (?, ?, ?, ?)
-            """, (dt, v, lon, lat))
-            conn.commit()
 
-            oldvalue, oldlon, oldlat = v, lon, lat
+            # Send data by http
+            r = requests.get("{}/import?lon={}&lat={}&value1={}&value2={}&value3={}".format(url, lon, lat, v1, v2, v3))
+            if r.status_code == 200:
+                print("-> ok")
+            else:
+                print("-> erreur {}".format(r.status_code))
+
+            oldvalue1, oldvalue2, oldvalue3, oldlon, oldlat = v1, v2, v3, lon, lat
             time.sleep(sleep)
 
         except KeyboardInterrupt:
             break
-
-    # Close database connection
-    curs.close()
-    conn.close()
 
 
 if __name__ == '__main__':

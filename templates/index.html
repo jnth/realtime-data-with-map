@@ -25,6 +25,11 @@
       <div class="row">
         <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
             <h1>Monitoring realtime data</h1>
+            <select id='opt' onchange='clean();'>
+                <option value='0'>Value 1</option>
+                <option value='1'>Value 2</option>
+                <option value='2'>Value 3</option>
+            </select>
             <p>Last record: <span id='lastrecord'></span></p>
         </div>
       </div>
@@ -45,6 +50,7 @@
   <script>
   /* *** Leaflet *** */
   var map = L.map('map').setView([0, 0], 14);
+  var markers = L.layerGroup().addTo(map);
 
   L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Tiles &copy; Esri'
@@ -57,6 +63,12 @@
 
   /* *** Chart *** */
   var chart;
+
+  function clean() {
+    // clean all markers on the map
+    markers.clearLayers();
+
+  }
 
   function get_data() {
     $.ajax({
@@ -71,23 +83,26 @@
     // function when data is received
     //console.log(data);
 
+    // get selected value
+    var opt = parseInt($('#opt').val());
+    
     // update last record value
     dt = data.last[0];
-    val = Math.round(data.last[1] * 10) / 10;
-    lon = data.last[2]
-    lat = data.last[3];
+    val = Math.round(data.last[opt + 1] * 10) / 10;
+    lon = data.last[4]
+    lat = data.last[5];
     $("#lastrecord")[0].innerHTML = dt + " @ (" + lon + ", " + lat + "), data = " + val;
 
     // update chart
-    chart.setData([{data: data.values}]);
+    chart.setData([{data: data.values[opt]}]);
     chart.setupGrid();
     chart.draw();
 
     // update map
     dt = data.last[0];
-    val = Math.round(data.last[1] * 10) / 10;
-    lon = data.last[2]
-    lat = data.last[3];
+    val = Math.round(data.last[opt + 1] * 10) / 10;
+    lon = data.last[4]
+    lat = data.last[5];
     map.panTo([lat, lon]);
     //marker.setLatLng([lat, lon]);
     //marker.bindPopup("<b>" + dt + "</b><br />data = " + val);
@@ -102,7 +117,7 @@
     } else {
       markeroptions.fillColor = '#ffff00';
     }
-    L.circleMarker([lat, lon], markeroptions).addTo(map);
+    L.circleMarker([lat, lon], markeroptions).addTo(markers);
 
     // wait and read data again
     setTimeout(get_data, {{ sleepms }});
