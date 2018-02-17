@@ -6,6 +6,7 @@
 
 import io
 import datetime
+import logging
 from dbinfo import dsn
 import pandas
 import psycopg2
@@ -14,10 +15,14 @@ from threading import Thread
 import time
 
 
+log = logging.getLogger()
+log.info("Starting application")
+
 sleep = 2  # timestep for reading database
 
 app = Flask(__name__)
 values = [[], [], []]  # data, last values (with coords), coords
+
 
 # Open database
 class Database():
@@ -27,19 +32,23 @@ class Database():
     def _connect(self):
         self.conn = psycopg2.connect(self.dsn)
         self.curs = self.conn.cursor()
+        log.debug("connection database ok")
 
     def _disconnect(self):
         self.curs.close()
         self.conn.close()
+        log.debug("connection database closed")
 
     def execute(self, sql):
         self._connect()
+        log.debug("running SQL: %s" % sql)
         self.curs.execute(sql)
         self.conn.commit()
         self._disconnect()
 
     def execute_and_fetch_all(self, sql):
         self._connect()
+        log.debug("running SQL: %s" % sql)
         self.curs.execute(sql)
         res = self.curs.fetchall()
         self._disconnect()
@@ -84,7 +93,7 @@ def poll_data():
             """)
             res = res[::-1]
         except psycopg2.OperationalError:
-            print("error: cannot read database !")
+            log.error("error: cannot read database !")
             time.sleep(sleep)
             continue
 
@@ -187,16 +196,12 @@ def doc():
     return "<pre>" + txt + "</pre>"
 
 
-def main():
-
-    # Run a thread to read data
-    thr = Thread(target=poll_data)
-    thr.daemon = True
-    thr.start()
-
-    # Start application
-    app.run(host='0.0.0.0', port=9876, debug=True)
+# Run a thread to read data
+thr = Thread(target=poll_data)
+thr.daemon = True
+thr.start()
 
 
 if __name__ == '__main__':
-    main()
+    # Start application
+    app.run(host='0.0.0.0', port=9877, debug=True)
