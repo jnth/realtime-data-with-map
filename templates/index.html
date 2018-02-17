@@ -92,7 +92,7 @@
     val = Math.round(data.last[opt + 1] * 10) / 10;
     lon = data.last[4]
     lat = data.last[5];
-    $("#lastrecord")[0].innerHTML = dt + " @ (" + lon + ", " + lat + "), data = " + val;
+    $("#lastrecord")[0].innerHTML = dt + " @ (" + lon + ", " + lat + "), data" + (opt + 1) + " = " + val;
 
     // update chart
     chart.setData([{data: data.values[opt]}]);
@@ -125,10 +125,12 @@
   }
 
   $(function() {
+    var opt = parseInt($('#opt').val());
+
     // Chart configuration
     chartopts = {
       series: {
-        label: 'data',
+        label: 'data' + (opt + 1),
         color: '#ff336e'
       },
       xaxis: {

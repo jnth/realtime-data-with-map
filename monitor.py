@@ -6,19 +6,12 @@
 
 import io
 import datetime
+from dbinfo import dsn
 import pandas
-import pymysql
+import psycopg2
 from flask import Flask, jsonify, render_template, request, send_file
 from threading import Thread
 import time
-
-
-mysqlinfo = {
-    'host': 'vmli-bdd',
-    'user': 'jv',
-    'passwd': 'jv',
-    'db': 'afficheurqa'
-}
 
 
 sleep = 2  # timestep for reading database
@@ -27,8 +20,33 @@ app = Flask(__name__)
 values = [[], [], []]  # data, last values (with coords), coords
 
 # Open database
-conn = pymysql.connect(**mysqlinfo)
-curs = conn.cursor()
+class Database():
+    def __init__(self, dsn):
+        self.dsn = dsn
+
+    def _connect(self):
+        self.conn = psycopg2.connect(self.dsn)
+        self.curs = self.conn.cursor()
+
+    def _disconnect(self):
+        self.curs.close()
+        self.conn.close()
+
+    def execute(self, sql):
+        self._connect()
+        self.curs.execute(sql)
+        self.conn.commit()
+        self._disconnect()
+
+    def execute_and_fetch_all(self, sql):
+        self._connect()
+        self.curs.execute(sql)
+        res = self.curs.fetchall()
+        self._disconnect()
+        return res
+
+
+db = Database(dsn)
 
 
 def dt2jst(dt):
@@ -59,33 +77,39 @@ def poll_data():
     while True:
         # Read the last 100 rows
         try:
-            curs.execute("""
+            res = db.execute_and_fetch_all("""
                 SELECT dt, value1, value2, value3, lon, lat
-                FROM data
+                FROM qa.data
                 ORDER BY dt DESC LIMIT 100
             """)
-            db = curs.fetchall()[::-1]
-        except pymysql.Error:
-            print("mysql error: cannot read database !")
+            res = res[::-1]
+        except psycopg2.OperationalError:
+            print("error: cannot read database !")
+            time.sleep(sleep)
+            continue
+
+        if not res:
             time.sleep(sleep)
             continue
 
         # list of (time, value) for the chart
-        data1 = [(dt2jst(dt) * 1000, value1)
-                 for dt, value1, value2, value3, lon, lat in db]
-        data2 = [(dt2jst(dt) * 1000, value2)
-                 for dt, value1, value2, value3, lon, lat in db]
-        data3 = [(dt2jst(dt) * 1000, value3)
-                 for dt, value1, value2, value3, lon, lat in db]
+        data1 = [(dt2jst(dt) * 1000, float(value1))
+                 for dt, value1, value2, value3, lon, lat in res]
+        data2 = [(dt2jst(dt) * 1000, float(value2))
+                 for dt, value1, value2, value3, lon, lat in res]
+        data3 = [(dt2jst(dt) * 1000, float(value3))
+                 for dt, value1, value2, value3, lon, lat in res]
 
         # last record (and convert datetime in a pretty format)
         # it will be use to add a marker inside map and show last value in a
         # tooltip.
-        last = list(db[-1])
+        last = list(res[-1])
         last[0] = prettydt(last[0])
+        last[1:] = [float(e) for e in last[1:]]
 
         # list of coords (lat, lon) for polyline
-        coords = [(lat, lon) for dt, value1, value2, value3, lon, lat in db]
+        coords = [(float(lat), float(lon))
+                  for dt, value1, value2, value3, lon, lat in res]
 
         # save data
         values[0], values[1], values[2] = [data1, data2, data3], last, coords
@@ -122,11 +146,10 @@ def import_data():
     if lat is None:
         return jsonify(status='error', message='pas de données lat'), 400
 
-    sql = ("INSERT INTO data (dt, value1, value2, value3, lon, lat) "
+    sql = ("INSERT INTO qa.data (dt, value1, value2, value3, lon, lat) "
            "VALUES ('{now:%Y-%m-%d %H:%M:%S}', {value1}, {value2}, {value3}, "
            "{lon}, {lat})").format(**locals())
-    curs.execute(sql)
-    conn.commit()
+    db.execute(sql)
 
     return jsonify(status='ok')
 
@@ -134,7 +157,7 @@ def import_data():
 @app.route('/export.csv')
 def export_data():
     """ Export data. """
-    sql = "SELECT dt, value1, value2, value3, lon, lat FROM data ORDER BY dt"
+    sql = "SELECT dt, value1, value2, value3, lon, lat FROM qa.data ORDER BY dt"
     df = pandas.read_sql(sql, conn)
 
     f = io.BytesIO()
@@ -148,6 +171,22 @@ def export_data():
                      as_attachment=True)
 
 
+@app.route('/clean')
+def clean():
+    """ Clean database. """
+    sql = "DELETE FROM qa.data"
+    db.execute(sql)
+
+    return jsonify(status='ok')
+
+
+@app.route('/doc')
+def doc():
+    with open('HOWTO.md') as f:
+        txt = f.read()
+    return "<pre>" + txt + "</pre>"
+
+
 def main():
 
     # Run a thread to read data
@@ -156,7 +195,7 @@ def main():
     thr.start()
 
     # Start application
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', port=9876, debug=True)
 
 
 if __name__ == '__main__':

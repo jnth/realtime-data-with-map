@@ -11,7 +11,7 @@ import random
 
 
 # Configuration
-url = "http://0.0.0.0:5000"
+url = "http://0.0.0.0:9876"
 initvalue, initlon, initlat = 50, 5., 45.
 dvalue, dlon, dlat = (-20, 20), (-.001, .001), (0., .001)
 minvalue, maxvalue = 0, 200

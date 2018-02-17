@@ -1,4 +1,4 @@
 pandas
 xlsxwriter
-pymysql
+psycopg2
 flask
