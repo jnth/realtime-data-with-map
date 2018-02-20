@@ -18,7 +18,7 @@ Or
     
 Create a PostgreSQL database and set connection configuration in `dbinfo.py`.
 
-Create database schema `qa` and tables (TODO: create a init script).
+Create database schema `qa` and tables by running `init-db.sql` in your database.
 
 Configure Apache (`/etc/apache2/sites-available/afficheur-qa.conf`) :
 
