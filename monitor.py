@@ -5,6 +5,7 @@
 
 
 import io
+import os
 import datetime
 import logging
 from dbinfo import dsn
@@ -18,6 +19,8 @@ import time
 log = logging.getLogger()
 log.info("Starting application")
 
+root = os.path.dirname(__file__)
+
 sleep = 2  # timestep for reading database
 
 app = Flask(__name__)
@@ -28,6 +31,13 @@ values = [[], [], []]  # data, last values (with coords), coords
 class Database():
     def __init__(self, dsn):
         self.dsn = dsn
+
+    def __enter__(self):
+        self._connect()
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._disconnect()
 
     def _connect(self):
         self.conn = psycopg2.connect(self.dsn)
@@ -167,7 +177,8 @@ def import_data():
 def export_data():
     """ Export data. """
     sql = "SELECT dt, value1, value2, value3, lon, lat FROM qa.data ORDER BY dt"
-    df = pandas.read_sql(sql, conn)
+    with Database(dsn) as db:
+        df = pandas.read_sql(sql, db.conn)
 
     f = io.BytesIO()
     writer = pandas.ExcelWriter(f, engine='xlsxwriter')
@@ -191,8 +202,8 @@ def clean():
 
 @app.route('/doc')
 def doc():
-    with open('HOWTO.md') as f:
-        txt = f.read()
+    with open(os.path.join(root, 'HOWTO.md'), 'rb') as f:
+        txt = f.read().decode('utf-8')
     return "<pre>" + txt + "</pre>"
 
 
